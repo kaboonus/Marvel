@@ -60,10 +60,10 @@ var minutesToSession = 11;
 var MinimDelayUndock = 3;
 var MaximDelayUndock = 30;
 /// Ranges
-int?	 RangeMissiles = 20000;
+int?	 RangeMissilesDefault = 19999;
 var shipRangerMax = 63;
 int salvageRange = 5000;
-int? DistanceCelestial = RangeMissiles;
+int? DistanceCelestial = RangeMissilesDefault;
 var maxDistanceToRats = 120;// you have to run from this rats
 string runFromRats = "♦|Titan|Dreadnought|Autothysian";
 //orbit, wrecks, etc
@@ -115,6 +115,12 @@ DateTime maxTimeToStop;
     int Atstart = 0;
     int K=1;
     int x;
+var MatchFromLabelWithRegexPattern = new Func<string, System.Text.RegularExpressions.Match>(regexPattern =>
+    Sanderling.MemoryMeasurementAccu?.Value?.ShipUiModule?.FirstOrDefault(modulul =>modulul.TooltipLast.Value.IsWeapon ?? false)?.TooltipLast?.Value?.LabelText.Select(textus =>textus?.Text?.RegexMatchIfSuccess(regexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))?.WhereNotDefault()?.FirstOrDefault());
+
+var DistanceMinFromLabelWithRegexPattern = new Func<string, int?>(prefixPattern =>
+    (int?)Distance.DistanceParseMin(MatchFromLabelWithRegexPattern(prefixPattern + Distance.DistanceRegexPattern)?.Value?.RegexMatchIfSuccess(Distance.DistanceRegexPattern)?.Value));
+
 string ModuleSalvagerX = "Salvager";
 const string StatusStringFromDroneEntryTextRegexPattern = @"\((.*)\)";
 static public string StatusStringFromDroneEntryText(this string droneEntryText) => droneEntryText?.RegexMatchIfSuccess(StatusStringFromDroneEntryTextRegexPattern)?.Groups[1]?.Value?.RemoveXmlTag()?.Trim();
@@ -339,6 +345,7 @@ string RetreatReason => RetreatReasonArmor ?? RetreatReasonBumped
 
 bool OreHoldFilledForOffload => Math.Max(0, Math.Min(100, EnterOffloadOreHoldFillPercent)) <= OreHoldFillPercent;
 //
+
 Func<object> MainStep()
 {
     while (ReadyForManeuverNot)
@@ -481,6 +488,11 @@ if (ReadyForManeuver)
         if(!Dockinginstance || !( Measurement?.IsDocked ?? false))
             ModuleMeasureAllTooltip();
 
+        if (ModuleWeapon?.FirstOrDefault().TooltipLast.Value.LabelText.ElementAtOrDefault(1).Text.RegexMatchSuccessIgnoreCase("launcher") ?? false
+        && (( (!ModuleWeapon?.FirstOrDefault()?.TooltipLast?.Value?.LabelText?.ElementAtOrDefault(2)?.Text?.IsNullOrEmpty() ?? false)
+        ? (int?)ModuleWeapon?.FirstOrDefault().TooltipLast.Value.LabelText.ElementAtOrDefault(2).Text?.Substring(0 , 2).TryParseInt() : 0 ))<15 )
+        ClickMenuEntryOnMenuRoot(ModuleWeapon?.FirstOrDefault(),"reload all");
+
         if (ActivatePerma  )
             PermaExecute();
 
@@ -523,8 +535,7 @@ Func<object>  NearStation()
         if(!Dockinginstance || !( Measurement?.IsDocked ?? false))
             ModuleMeasureAllTooltip();
         Collapse(SalvageDronesFolder);
-        if (ModuleWeapon?.FirstOrDefault().TooltipLast.Value.LabelText.FirstOrDefault().Text.Contains("launcher") ?? false)
-        ClickMenuEntryOnMenuRoot(ModuleWeapon?.FirstOrDefault(),"reload all");
+
     }
 return MainStep;
 }
@@ -549,10 +560,12 @@ Func<object> TakeAnomaly()
     }
     DroneEnsureInBay();
     Collapse(SalvageDronesFolder);
+var AmmoInventoryCount =(WindowInventory?.SelectedRightInventory?.ListView?.Entry?.FirstOrDefault( item =>item?.ListColumnCellLabel.FirstOrDefault().Value.RegexMatchSuccessIgnoreCase(MissilesName) ?? false) != null) ? Regex.Replace(WindowInventory?.SelectedRightInventory?.ListView?.Entry?.FirstOrDefault( item =>item?.ListColumnCellLabel.FirstOrDefault().Value.RegexMatchSuccessIgnoreCase(MissilesName) ?? false)
+.ListColumnCellLabel.ElementAtOrDefault(1).Value, "[^0-9]+", "").TryParseInt() : 0;
 
-	if ( OreHoldFillPercent > 21 || activeshipnameSalvage)
+	if ( OreHoldFillPercent > 21 || activeshipnameSalvage || (UseMissiles && AmmoInventoryCount < 500 ))
     {
-        Host.Log("               Cargo at : " +OreHoldFillPercent+ " %  . Go to unload !");
+        Host.Log("               Cargo at : " +OreHoldFillPercent+ " %  ;  Ammo Inventory Count : " +AmmoInventoryCount+"   Go to unload !");
         WarpingSlow(RetreatBookmark, "dock");
         return MainStep;
     }
@@ -1251,6 +1264,7 @@ DroneViewEntryItem[] AllDrones => WindowDrones?.ListView?.Entry?.OfType<DroneVie
 
 int?		WeaponRange => ModuleWeapon?.Select(module =>
 	module?.TooltipLast?.Value?.RangeOptimal ?? module?.TooltipLast?.Value?.RangeMax ?? module?.TooltipLast?.Value?.RangeWithin  ?? 0)?.DefaultIfEmpty(0)?.Min();
+int? RangeMissiles => DistanceMinFromLabelWithRegexPattern(@"Max flight range<br>\s*").HasValue ? DistanceMinFromLabelWithRegexPattern(@"Max flight range<br>\s*") : RangeMissilesDefault;
 int?		WeaponMaxRange => Math.Max(RangeMissiles.Value, WeaponRange.Value);
 
 
