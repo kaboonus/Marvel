@@ -1,5 +1,5 @@
-/*MaRBeL-1v1 MTU Anomaly Ratting Bot + salvage drones + refill drones + SAFE EWAR
-
+/*MaRBeL-1v2 MTU Anomaly Ratting Bot + salvage drones + refill drones + SAFE EWAR
+gila version 
 https://forum.botengine.org/t/kaboonus-scripts-guide-wiki-page-so-do-not-respond-in-this-one/2156
 **Thy Viir for helping me to optimise the code and having all that in  max filesize
 */
@@ -9,18 +9,22 @@ using MemoryStruct = Sanderling.Interface.MemoryStruct;
 using System.IO;
 using System.Collections.Generic;
 using System;
-string VersionScript = "MARBEL-1v1 ";//do not change
+string VersionScript = "MARBEL-1v2 ";//do not change
 //	begin of configuration section ->
  new System.Media.SoundPlayer(@"C:\sw4-force.wav").Play();
     Host.Log( "Gathering and processing some info to be used later ");
     Host.Delay(2111);
-
+//important
 string StationHomeName = "station1|station2";
 string IgnoreNeutral = "player1|player2"; //
 string MyCorpo = "[corp ticket]";
 string WarpToAnomalyDistance = "Within 10 km";
 string RattingShipName = "!Vexor|Vexor";
 string SalvageShipName = "Noctis|Gnosis";
+var UseMissiles = true;
+string MissilesName = "Inferno Light Missile";
+string QuantityMissiles = "2000";
+int MinInLauncher = 19;
 /////settings anomaly
 string AnomalyToTakeColumnHeader = "name";
 string AnomalyToTake = "Forsaken Hub";
@@ -40,14 +44,11 @@ string CharName = MyOwnChar?.NameLabel?.Text.ToLower();
 string LabelNameAttackDrones;
 Dictionary<string,string> faction=new Dictionary<string,string>();
 faction.Add("Delve", "Imperial Navy Praetor");
-faction.Add("Fountain", "Caldari navy wasp");
+faction.Add("Fountain", "Caldari navy vespa");
 faction.TryGetValue(CurrentRegion,out LabelNameAttackDrones);
  Host.Log( " Drones name : " +LabelNameAttackDrones+ "");
 
 
-var UseMissiles = true;
-string MissilesName = "Inferno Light Missile";
-string QuantityMissiles = "2000";//change
 string UnloadDestContainerName = "Item Hangar";
 string messageTextDread = " dread";
 // SESSION/DT TImers
@@ -401,9 +402,8 @@ if (Measurement?.IsDocked ?? false)
         Host.Delay(4111);
         StackAll ();
         if   (activeshipnameRatting )
-            RefillDrones();
-        if (activeshipnameRatting && UseMissiles)
-        RefillMissiles();
+            Refill ();
+
         RepairShop ();
         UseSalvageDrones = false;
         SiteFinished = false;
@@ -488,10 +488,8 @@ if (ReadyForManeuver)
         if(!Dockinginstance || !( Measurement?.IsDocked ?? false))
             ModuleMeasureAllTooltip();
 
-        if (ModuleWeapon?.FirstOrDefault().TooltipLast.Value.LabelText.ElementAtOrDefault(1).Text.RegexMatchSuccessIgnoreCase("launcher") ?? false
-        && (( (!ModuleWeapon?.FirstOrDefault()?.TooltipLast?.Value?.LabelText?.ElementAtOrDefault(2)?.Text?.IsNullOrEmpty() ?? false)
-        ? (int?)ModuleWeapon?.FirstOrDefault().TooltipLast.Value.LabelText.ElementAtOrDefault(2).Text?.Substring(0 , 2).TryParseInt() : 0 ))<15 )
-        ClickMenuEntryOnMenuRoot(ModuleWeapon?.FirstOrDefault(),"reload all");
+
+
 
         if (ActivatePerma  )
             PermaExecute();
@@ -535,6 +533,10 @@ Func<object>  NearStation()
         if(!Dockinginstance || !( Measurement?.IsDocked ?? false))
             ModuleMeasureAllTooltip();
         Collapse(SalvageDronesFolder);
+        if (UseMissiles && !(ModuleWeapon?.IsNullOrEmpty() ?? false) && (ModuleWeapon?.FirstOrDefault().TooltipLast.Value.LabelText.ElementAtOrDefault(1).Text.RegexMatchSuccessIgnoreCase("launcher") ?? false)
+		&& ( (!ModuleWeapon?.FirstOrDefault()?.TooltipLast?.Value?.LabelText?.ElementAtOrDefault(2)?.Text?.IsNullOrEmpty() ?? false)
+		? ((int?)ModuleWeapon?.FirstOrDefault().TooltipLast.Value.LabelText.ElementAtOrDefault(2).Text?.Substring(0 , 2).TryParseInt()) : 0 )< MinInLauncher )
+        ClickMenuEntryOnMenuRoot(ModuleWeapon?.FirstOrDefault(),"reload all");
 
     }
 return MainStep;
@@ -721,7 +723,7 @@ Func<object> DefenseStep()
     {
         if (shouldAttackTarget)
         {
-        if (ModuleWeapon?.Length>0  && Measurement?.Target?.FirstOrDefault(target => target?.IsSelected ?? false).DistanceMax < 20000)
+        if (ModuleWeapon?.Length>0  && Measurement?.Target?.FirstOrDefault(target => target?.IsSelected ?? false).DistanceMax < WeaponMaxRange)
             ShootWeapon();
 
 		if (CapacitorHpPercent > StopCapacitorValue)
@@ -1962,6 +1964,7 @@ void LootValue()
     KaboonusCounting = Regex.Replace(KaboonusCounting, "[^0-9]+", "");
     Double.TryParse(KaboonusCounting,out inventoryValue);
     int TotalValueParSession = Atstart +(int) inventoryValue;
+Atstart =TotalValueParSession;
     StatusLootValue =TotalValueParSession.ToString("N0");
     StatusLoot = Regex.Replace(StatusLootValue, ",", " ");
     Host.Log("                # inventory value : "+StatusLootValue+ " . ");
@@ -2038,13 +2041,12 @@ void RepairShop ()
     Sanderling.WaitForMeasurement();
     var RepairAllButton = Sanderling?.MemoryMeasurementParsed?.Value?.WindowOther?.FirstOrDefault()?.ButtonText?.FirstOrDefault(text => text.Text.RegexMatchSuccessIgnoreCase("repair all"));
     Sanderling.WaitForMeasurement();
+    Host.Delay(1500);
 	if (RepairAllButton !=null)
 	{
         Sanderling.MouseClickLeft(RepairAllButton);
         Host.Delay(500);
     }
-
-
     Sanderling.WaitForMeasurement();
     if (RepairShopWindow?.HeaderButton != null)
     {
@@ -2068,87 +2070,64 @@ void MoveDronesToFolder()
     }
 }
 
+var NoQuantity = true;
 
-
-
-void RefillDrones()
+void Refill ()
 {
     EnsureWindowInventoryOpen();
     EnsureWindowInventoryOpenActiveShip();
-        var inventoryActiveShip = WindowInventory?.ActiveShipEntry;
+
     if(InventoryActiveShipDronesContainer == null && !(IsExpanded(inventoryActiveShip) ?? false))
         Sanderling.MouseClickLeft(inventoryActiveShip?.ExpandToggleButton);
-    Sanderling.WaitForMeasurement(); 
-        Sanderling.MouseClickLeft(InventoryActiveShipDronesContainer);
-    Sanderling.WaitForMeasurement(); 
+    Sanderling.WaitForMeasurement();
+    Sanderling.MouseClickLeft(InventoryActiveShipDronesContainer);
+        Sanderling.WaitForMeasurement();
         Host.Delay(3111);
-    Host.Log("               DronesHoldFillPercent   " +DronesHoldFillPercent+ "");
-
+    var HangarContainerLabelRegexPattern =
+        InventoryContainerLabelRegexPatternFromContainerName(UnloadDestContainerName);
+    var HangarContainer =
+        WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
+        ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(HangarContainerLabelRegexPattern) ?? false);
+    Host.Delay(1111);
+        Host.Log("               DronesHoldFillPercent   " +DronesHoldFillPercent+ "");
     if (DronesHoldFillPercent < 90)
     {
-        var HangarContainerLabelRegexPattern =
-            InventoryContainerLabelRegexPatternFromContainerName(UnloadDestContainerName);
-        var HangarContainer =
-            WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
-            ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(HangarContainerLabelRegexPattern) ?? false);
-             Host.Delay(3111);
-
-            Host.Delay(1111);
         Sanderling.MouseClickLeft(HangarContainer);
-            Host.Delay(1111);
-        Sanderling.MouseClickLeft(WindowInventory?.InputText?.FirstOrDefault());
-            Sanderling.TextEntry(LabelNameAttackDrones);
-        var dronesHoldListItem = WindowInventory?.SelectedRightInventory?.ListView?.Entry?.ToArray();
-        var dronesHoldItem = dronesHoldListItem?.FirstOrDefault();
-        if (1 < dronesHoldListItem?.Length)
-            ClickMenuEntryOnMenuRoot(dronesHoldItem, @"select\s*all");
-        Sanderling.WaitForMeasurement();
-        Sanderling.MouseDragAndDrop(dronesHoldItem , InventoryActiveShipDronesContainer);
-            Sanderling.WaitForMeasurement();
-        Sanderling.KeyboardPress(returnkey);
-            Host.Delay(511);
-        Sanderling.MouseClickLeft(WindowInventory?.SelectedRightFilterButtonClear);
-           Console.Beep(1500, 200);
-           Host.Log("              Filled with Drones ");
+            Host.Delay(3111);
+        NoQuantity = true;
+        RefillGoods(LabelNameAttackDrones , InventoryActiveShipDronesContainer);
     }
-}
-void RefillMissiles()
-{
-    EnsureWindowInventoryOpen();
-    EnsureWindowInventoryOpenActiveShip();
-        var inventoryActiveShip = WindowInventory?.ActiveShipEntry;
-        var HangarContainerLabelRegexPattern =
-            InventoryContainerLabelRegexPatternFromContainerName(UnloadDestContainerName);
-        var HangarContainer =
-            WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
-            ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(HangarContainerLabelRegexPattern) ?? false);
-             Host.Delay(3111);
-
-            Host.Delay(1111);
+    Host.Delay(1111);
+    if (UseMissiles)
+    {
         Sanderling.MouseClickLeft(HangarContainer);
-            Host.Delay(1111);
-        Sanderling.MouseClickLeft(WindowInventory?.InputText?.FirstOrDefault());
-            Sanderling.TextEntry(MissilesName);
-        var MissilesHoldListItem = WindowInventory?.SelectedRightInventory?.ListView?.Entry?.ToArray();
-        var missilesHoldItem = MissilesHoldListItem?.FirstOrDefault();
+            Host.Delay(3111);
+        NoQuantity = false;
+        RefillGoods(MissilesName , InventoryActiveShipContainer);
+    }
+    Host.Delay(511);
+    Sanderling.MouseClickLeft(HangarContainer);
+}
 
-            Sanderling.KeyDown(VirtualKeyCode.SHIFT);
-            Host.Delay(511);
-            Sanderling.MouseDragAndDrop(missilesHoldItem , inventoryActiveShip);
-            Host.Delay(511);
-            Sanderling.KeyUp(VirtualKeyCode.SHIFT);
-         Host.Delay(1511);
-
-           Sanderling.TextEntry(QuantityMissiles);
-           Host.Delay(511);
-        Sanderling.KeyboardPress(returnkey);
-
-            Host.Delay(511);
-        Sanderling.MouseClickLeft(inventoryActiveShip);
-
-           Console.Beep(1500, 200);
-           Host.Log("              Filled with Missiles ");
-    
+void RefillGoods(string goody , IUIElement deposit)
+{
+    Sanderling.MouseClickLeft(WindowInventory?.InputText?.FirstOrDefault());
+    Sanderling.TextEntry(goody);
+        Host.Delay(1111);
+    var RefillListItem = WindowInventory?.SelectedRightInventory?.ListView?.Entry?.ToArray();
+    var RefillItem = RefillListItem?.FirstOrDefault();
+    Sanderling.KeyDown(VirtualKeyCode.SHIFT);
+        Host.Delay(511);
+    Sanderling.MouseDragAndDrop(RefillItem , deposit);
+        Host.Delay(511);
+    Sanderling.KeyUp(VirtualKeyCode.SHIFT);
+    Host.Delay(1511);
+    if (UseMissiles && !NoQuantity)
+        Sanderling.TextEntry(QuantityMissiles);
+    Host.Delay(511);
+    Sanderling.KeyboardPress(returnkey);
+    NoQuantity = true;
+    Host.Log("              Filled with : " +goody);
 }
 void  ChangeToRatting ()
 {
@@ -2226,7 +2205,6 @@ bool IsNeutralOrEnemy(IChatParticipantEntry participantEntry) =>
      new[] { "good standing", "excellent standing", "Pilot is in your (fleet|corporation|alliance)", "Pilot is an ally in one or more of your wars", }
      .Any(goodStandingText =>
         flagIcon?.HintText?.RegexMatchSuccessIgnoreCase(goodStandingText) ?? false)) ?? false);
-
 
 
 
