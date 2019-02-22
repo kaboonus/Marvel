@@ -1,5 +1,6 @@
-/*MaRBeL-1v2 MTU Anomaly Ratting Bot + salvage drones + refill drones + SAFE EWAR
+/*MaRBeL-1v3 MTU Anomaly Ratting Bot + salvage drones + refill drones + SAFE EWAR
 gila version 
+delete lines with new System.Media.SoundPlayer
 https://forum.botengine.org/t/kaboonus-scripts-guide-wiki-page-so-do-not-respond-in-this-one/2156
 **Thy Viir for helping me to optimise the code and having all that in  max filesize
 */
@@ -9,15 +10,27 @@ using MemoryStruct = Sanderling.Interface.MemoryStruct;
 using System.IO;
 using System.Collections.Generic;
 using System;
-string VersionScript = "MARBEL-1v2 ";//do not change
+string VersionScript = "MARBEL-1v3 ";//do not change
 //	begin of configuration section ->
  new System.Media.SoundPlayer(@"C:\sw4-force.wav").Play();
     Host.Log( "Gathering and processing some info to be used later ");
     Host.Delay(2111);
-//important
+//important to change
 string StationHomeName = "station1|station2";
 string IgnoreNeutral = "player1|player2"; //
 string MyCorpo = "[corp ticket]";
+var InfoPannelRegion =
+    Measurement?.InfoPanelCurrentSystem?.HeaderText.RemoveXmlTag()?.Trim();
+var CurrentRegion = InfoPannelRegion.Substring(InfoPannelRegion.LastIndexOf(' ')).TrimStart();
+var CurrentSystem = InfoPannelRegion.Substring(0,InfoPannelRegion.IndexOf(' ')).TrimEnd();
+var MyOwnChar  = chatLocal?.ParticipantView?.Entry?.FirstOrDefault(myflag =>myflag?.FlagIcon == null);
+string CharName = MyOwnChar?.NameLabel?.Text.ToLower();
+
+string MyMTUName;
+Dictionary<string,string> NamingMtu=new Dictionary<string,string>();
+NamingMtu.Add("mychar1", "1mtu");
+NamingMtu.Add("mychar2", "2mtu");
+NamingMtu.TryGetValue(CharName,out MyMTUName);
 string WarpToAnomalyDistance = "Within 10 km";
 string RattingShipName = "!Vexor|Vexor";
 string SalvageShipName = "Noctis|Gnosis";
@@ -25,7 +38,8 @@ var UseMissiles = true;
 string MissilesName = "Inferno Light Missile";
 string QuantityMissiles = "2000";
 int MinInLauncher = 19;
-/////settings anomaly
+////usual to change
+/////settings anomaly 
 string AnomalyToTakeColumnHeader = "name";
 string AnomalyToTake = "Forsaken Hub";
 string salvagingTab = "colly|fighters";
@@ -35,12 +49,7 @@ var CombatDronesFolder = "heavy";
 var SalvageDronesFolder = "salvagers";
 string RetreatBookmark = "home";
 string messageText = "old site";
-var InfoPannelRegion =
-    Measurement?.InfoPanelCurrentSystem?.HeaderText.RemoveXmlTag()?.Trim();
-var CurrentRegion = InfoPannelRegion.Substring(InfoPannelRegion.LastIndexOf(' ')).TrimStart();
-var CurrentSystem = InfoPannelRegion.Substring(0,InfoPannelRegion.IndexOf(' ')).TrimEnd();
-var MyOwnChar  = chatLocal?.ParticipantView?.Entry?.FirstOrDefault(myflag =>myflag?.FlagIcon == null);
-string CharName = MyOwnChar?.NameLabel?.Text.ToLower();
+
 string LabelNameAttackDrones;
 Dictionary<string,string> faction=new Dictionary<string,string>();
 faction.Add("Delve", "Imperial Navy Praetor");
@@ -64,7 +73,7 @@ var MaximDelayUndock = 30;
 int?	 RangeMissilesDefault = 19999;
 var shipRangerMax = 63;
 int salvageRange = 5000;
-int? DistanceCelestial = RangeMissilesDefault;
+int? DistanceCelestial = 30000; // or   RangeMissilesDefault
 var maxDistanceToRats = 120;// you have to run from this rats
 string runFromRats = "♦|Titan|Dreadnought|Autothysian";
 //orbit, wrecks, etc
@@ -72,7 +81,7 @@ string celestialOrbit = "broken|pirate gate";
 string CelestialToAvoid = "Chemical Factory";
 string commanderNameWreck = "Commander|Dark Blood|true|Shadow Serpentis|Dread Gurista|Domination Saint|Gurista Distributor|Sentient|Overseer|Spearhead|Dread Guristas|Estamel|Vepas|Thon|Kaikka|True Sansha|Chelm|Vizan|Selynne|Brokara|Dark Blood|Draclira|Ahremen|Raysere|Tairei|Cormack|Setele|Tuvan|Brynn|Domination|Tobias|Gotan|Hakim|Mizuro";
 var StopCapacitorValue = 37;
-int DroneNumber = 2;
+int DroneNumber = 5;
 int TargetCountMax = 2;
 var ActivatePerma = true;
 var ActivateArmorRepairer = false;// true to be all time actived
@@ -208,7 +217,7 @@ CloseModalUIElement();
 
 if(Measurement?.WindowTelecom != null)
     CloseWindowTelecom();
-while (Measurement?.ShipUi?.SpeedLabel?.Text?.RegexMatchSuccessIgnoreCase("(Warping)") ?? false)
+while (SpeedWarping)
 {
     while(K>0)
     {
@@ -278,8 +287,8 @@ if(null != RetreatReason && !(Measurement?.IsDocked ?? false))
             }
         }
         if(0 == DronesInSpaceCount)
-        {
-        if (listOverviewStationName?.Length > 0 &&( null != RetreatReason) && !(Measurement?.ShipUi?.SpeedLabel?.Text?.RegexMatchSuccessIgnoreCase("(Warping)") ?? false))
+                {
+        if (listOverviewStationName?.Length > 0 &&( null != RetreatReason) && !SpeedWarping)
                 WarpInstant ();
         if (ReadyForManeuver  &&  null == WindowDrones )
             {
@@ -400,9 +409,13 @@ if (Measurement?.IsDocked ?? false)
             ChangeToRatting () ;
         Sanderling.WaitForMeasurement();
         Host.Delay(4111);
-        StackAll ();
-        if   (activeshipnameRatting )
-            Refill ();
+
+            if (activeshipnameRatting )
+        {
+            NoQuantity = true;
+        RefillGoods(MTUName , InventoryActiveShipContainer);
+                    Refill ();
+        }
 
         RepairShop ();
         UseSalvageDrones = false;
@@ -415,14 +428,14 @@ if (Measurement?.IsDocked ?? false)
             int DelayTime = rnd.Next(MinimDelayUndock, MaximDelayUndock);
             Host.Log("               Keep your horses for :  " + DelayTime+ " s ");
             Host.Delay( DelayTime*1000);
-            while (Measurement?.IsDocked ?? false || (!Tethering  && Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli>100000))
+            while (Measurement?.IsDocked ?? false || (!Tethering  && MySpeed>100))
                 {
                     if (Measurement?.WindowStation?.FirstOrDefault()?.UndockButton != null)
                         Sanderling.MouseClickLeft(Measurement?.WindowStation?.FirstOrDefault()?.UndockButton);
                     Host.Log("             Feel the Force Luke!");
                     Host.Delay(1823);
                 }
-            if  (!(Measurement?.IsDocked ?? false) || (!Tethering  && Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli>100000))
+            if  (!(Measurement?.IsDocked ?? false) || (!Tethering  && MySpeed>100))
                 {
                 Host.Log("               Luke > I try Master Yoda, ... I try!");
                 Host.Delay(5823);
@@ -518,7 +531,7 @@ Func<object>  NearStation()
     if (!( Measurement?.IsDocked ?? false))
     {
         Sanderling.WaitForMeasurement();
-        while (!Tethering  && Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli>100000)
+        while (!Tethering  && MySpeed>100)
         {
         Sanderling.KeyboardPressCombined(new[]{ lockTargetKeyCode, spacekey});
             Host.Delay(3444);
@@ -565,7 +578,7 @@ Func<object> TakeAnomaly()
 var AmmoInventoryCount =(WindowInventory?.SelectedRightInventory?.ListView?.Entry?.FirstOrDefault( item =>item?.ListColumnCellLabel.FirstOrDefault().Value.RegexMatchSuccessIgnoreCase(MissilesName) ?? false) != null) ? Regex.Replace(WindowInventory?.SelectedRightInventory?.ListView?.Entry?.FirstOrDefault( item =>item?.ListColumnCellLabel.FirstOrDefault().Value.RegexMatchSuccessIgnoreCase(MissilesName) ?? false)
 .ListColumnCellLabel.ElementAtOrDefault(1).Value, "[^0-9]+", "").TryParseInt() : 0;
 
-	if ( OreHoldFillPercent > 21 || activeshipnameSalvage || (UseMissiles && AmmoInventoryCount < 500 ))
+	if ( OreHoldFillPercent > 29 || activeshipnameSalvage || (UseMissiles && AmmoInventoryCount < 500 ))
     {
         Host.Log("               Cargo at : " +OreHoldFillPercent+ " %  ;  Ammo Inventory Count : " +AmmoInventoryCount+"   Go to unload !");
         WarpingSlow(RetreatBookmark, "dock");
@@ -634,9 +647,9 @@ var AmmoInventoryCount =(WindowInventory?.SelectedRightInventory?.ListView?.Entr
 			}
 		}
     }
-    if (null == scanResultCombatSite && Tethering && Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli>2000)
+    if (null == scanResultCombatSite && Tethering && MySpeed >2)
         Sanderling.KeyboardPressCombined(new[]{ lockTargetKeyCode, spacekey});
-                   if (null == scanResultCombatSite && Tethering && Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli<2000)
+                   if (null == scanResultCombatSite && Tethering && MySpeed < 2)
             {
                 Host.Log("               R2D2: No anomalies, waiting ");
                 return MainStep;
@@ -766,7 +779,7 @@ Func<object> DefenseStep()
         while (DronesInSpaceCount>0 )
                 DroneEnsureInBay();
         new System.Media.SoundPlayer(@"C:\Appear.wav").Play();
-        if (Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli>100000)
+        if (MySpeed>100)
             Sanderling.KeyboardPressCombined(new[]{ lockTargetKeyCode, spacekey});
         KaboonusTalk();
         Messages(" defense ended");
@@ -802,7 +815,7 @@ Func<object> InBeltMineStep()
         return MainStep;
         }
 
-    while (!ReadyForManeuver || (Measurement?.ShipUi?.SpeedLabel?.Text?.RegexMatchSuccessIgnoreCase("(Warping)") ?? false))
+    while (!ReadyForManeuver || SpeedWarping)
         return InBeltMineStep;
     if (ActivatePerma )
         PermaExecute();
@@ -995,6 +1008,11 @@ Func<object> DronesAreSalvagingStep()
             Sanderling.WaitForMeasurement();
         }
     }
+            if ( 0 < ListWreckOverviewEntry.Length && ListWreckOverviewEntry?.FirstOrDefault().DistanceMax > 60000)
+    {
+        ClickMenuEntryOnMenuRoot(ListWreckOverviewEntry?.FirstOrDefault(), "approach");
+        Messages("out of range");//to add something if need
+    }
     if (AnyDroneIdle && 0 < ListWreckOverviewEntry.Length)
         Sanderling.KeyboardPress(attackDrones);
     if (!(ListWreckOverviewEntry.Length > 0 ))
@@ -1065,6 +1083,7 @@ Func<object> SalvagingStep()
     }
     if (wreckOverviewEntryNextNotTargeted.DistanceMax > salvageRange)
     {
+        ClickMenuEntryOnMenuRoot(wreckOverviewEntryNextNotTargeted, "approach");
         Messages("out of range");//to add something if need
     }
     else
@@ -1194,7 +1213,9 @@ Parse.IOverviewEntry[] listOverviewEntryEnemy =>
     ?.Where(entry => entry?.ListBackgroundColor?.Any(IsEnemyBackgroundColor) ?? false)
     ?.ToArray();
 Parse.IOverviewEntry[] listOverviewMtu => WindowOverview?.ListView?.Entry
-    ?.Where(mtu => ((mtu?.Type?.RegexMatchSuccessIgnoreCase(MTUName) ?? true) && (mtu?.ListColumnCellLabel?.FirstOrDefault(corp =>corp.Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? false ).Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? true)  ))
+    ?.Where(mtu => ((YesTeam ? (mtu?.Name?.RegexMatchSuccessIgnoreCase(MyMTUName) ?? true)
+        : (mtu?.Type?.RegexMatchSuccessIgnoreCase(MTUName) ?? true) ) 
+        && (mtu?.ListColumnCellLabel?.FirstOrDefault(corp =>corp.Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? false ).Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? true)  ))
     .ToArray();
 Sanderling.Accumulation.IShipUiModule[] SetModuleSalvager =>
     Sanderling.MemoryMeasurementAccu?.Value?.ShipUiModule?.Where(module => module?.TooltipLast?.Value?.LabelText?.Any(
@@ -1268,7 +1289,7 @@ int?		WeaponRange => ModuleWeapon?.Select(module =>
 	module?.TooltipLast?.Value?.RangeOptimal ?? module?.TooltipLast?.Value?.RangeMax ?? module?.TooltipLast?.Value?.RangeWithin  ?? 0)?.DefaultIfEmpty(0)?.Min();
 int? RangeMissiles => DistanceMinFromLabelWithRegexPattern(@"Max flight range<br>\s*").HasValue ? DistanceMinFromLabelWithRegexPattern(@"Max flight range<br>\s*") : RangeMissilesDefault;
 int?		WeaponMaxRange => Math.Max(RangeMissiles.Value, WeaponRange.Value);
-
+int MySpeed => Measurement?.ShipUi?.SpeedMilli.HasValue ?? false  ?(int)Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli.Value /1000 : 0;
 
 int? DronesInSpaceCount => DronesInSpaceListEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt();
 int? DronesInBayCount => DronesInBayListEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt();
@@ -1288,11 +1309,11 @@ public bool ReadyForManeuverNot =>
 public bool Dockinginstance =>
     Measurement?.ShipUi?.Indication?.LabelText?.Any(indicationLabel =>
         (indicationLabel?.Text).RegexMatchSuccessIgnoreCase("docking")) ?? false;
-
+public bool SpeedWarping => Measurement?.ShipUi?.SpeedLabel?.Text?.RegexMatchSuccessIgnoreCase("(Warping)") ?? false;
 public bool EmptyIndication =>
     Measurement?.ShipUi?.Indication?.LabelText?.Any(indicationLabel =>
         (indicationLabel?.Text).RegexMatchSuccessIgnoreCase("")) ?? false;
-public bool ShipIsSleeping => (EmptyIndication || !(Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli>2000));
+public bool ShipIsSleeping => (EmptyIndication || !(MySpeed>2));
 public bool ReadyForManeuver => !ReadyForManeuverNot  && !(Measurement?.IsDocked ?? true);
 public bool ReadyToBattle => 0 < ListRatOverviewEntry?.Length && ReadyForManeuver;
 public bool NoRatsOnGrid => 0 == ListRatOverviewEntry?.Length || ListRatOverviewEntry?.FirstOrDefault()?.DistanceMax > MaxDistanceToRats;
@@ -1309,7 +1330,7 @@ WindowChatChannel chatLocal =>
 //
 
 int ? IgnoreListCount  => chatLocal?.ParticipantView?.Entry?.Where(ignoreplayer =>ignoreplayer?.NameLabel?.Text?.RegexMatchSuccessIgnoreCase(IgnoreNeutral) ?? false).ToArray()?.Count() ;
-
+public bool YesTeam => 1 < chatLocal?.ParticipantView?.Entry?.Count(MatePlayer);
 public bool YesHostiles => 1+IgnoreListCount < chatLocal?.ParticipantView?.Entry?.Count(IsNeutralOrEnemy);
 //
 var logoutme= false;
@@ -1345,7 +1366,6 @@ void CleanWindowProbe()
 {
     var probeScannerWindow = Measurement?.WindowProbeScanner?.FirstOrDefault();
     var UndesiredAnomaly = probeScannerWindow?.ScanResultView?.Entry?.FirstOrDefault(IgnoreAnomaly);
-    var scanActuallyAnomaly = probeScannerWindow?.ScanResultView?.Entry?.FirstOrDefault(ActuallyAnomaly);
     if (null != UndesiredAnomaly)
     {
         ClickMenuEntryOnMenuRoot(UndesiredAnomaly, "Ignore Result");
@@ -1928,7 +1948,7 @@ void RecoverMtu ()
         Host.Delay(1111);
     }
 }
-
+string KaboonusMidget ;
 void KaboonusTalk()
 {
     Host.Log("      Checking your wallet ....");
@@ -1936,20 +1956,22 @@ void KaboonusTalk()
     var KaboonusWithTexturePathMatch = new Func<string, MemoryStruct.IUIElement>(texturePathRegexPattern =>
                     Measurement?.Neocom?.Button?.FirstOrDefault(candidate => candidate?.TexturePath?.RegexMatchSuccess(texturePathRegexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase) ?? false));
     var KaboonusButton = KaboonusWithTexturePathMatch("wallet");
-    Sanderling.MouseMove(KaboonusButton);
-    Sanderling.WaitForMeasurement();
-    Host.Delay(211);
-    if  (Measurement.Tooltip.IsNullOrEmpty())
+
+    for (int i = 3; i >= 0; i--)
         {
+            KaboonusMidget = 	Measurement?.Tooltip?.FirstOrDefault()?.LabelText?.FirstOrDefault(entry =>entry.Text.RegexMatchSuccessIgnoreCase("\\d",RegexOptions.IgnoreCase))?.Text ;
+    
+            			if(!KaboonusMidget?.IsNullOrEmpty() ?? false)
+				break;
             Sanderling.MouseMove(KaboonusButton);
             Sanderling.WaitForMeasurement();
+            Sanderling.MouseMove(KaboonusButton);
         }
-        string KaboonusMidget = 	Measurement?.Tooltip?.FirstOrDefault()?.LabelText?.FirstOrDefault(entry =>entry.Text.RegexMatchSuccessIgnoreCase("\\d",RegexOptions.IgnoreCase))?.Text ;
-    var  Preparatus = Regex.Replace(KaboonusMidget, "[^0-9]+", "");
+        var  Preparatus = Regex.Replace(KaboonusMidget, "[^0-9]+", "");
     Double.TryParse(Preparatus,out MagicalPrepare);
     Paracelsus = MagicalPrepare - HocusPocusPreparatus;
     Host.Delay(2111);
-    Sanderling.MouseMove(Sanderling?.MemoryMeasurementParsed?.Value?.InfoPanelCurrentSystem?.ListSurroundingsButton);
+    //Sanderling.MouseMove(Sanderling?.MemoryMeasurementParsed?.Value?.InfoPanelCurrentSystem?.ListSurroundingsButton);
 }
 
 void LootValue()
@@ -1959,6 +1981,8 @@ void LootValue()
     Host.Delay(1111);
     var ListLabeltext = 	Measurement?.WindowInventory?.FirstOrDefault()?.LabelText?.ToList();
     var LootValeur= 	Measurement?.WindowInventory?.FirstOrDefault()?.LabelText?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase("ISK <color=gray>Est. price") ?? true);
+    Sanderling.MouseMove(LootValeur);
+    Host.Delay(311);
     int positionindex = ListLabeltext.IndexOf(LootValeur, 0);
     string KaboonusCounting = 	ListLabeltext[positionindex]?.Text;
     KaboonusCounting = Regex.Replace(KaboonusCounting, "[^0-9]+", "");
@@ -1977,54 +2001,29 @@ void InInventoryUnloadItemsTo(string DestinationContainerName)
 {
     Host.Log("               Unload items to '" + DestinationContainerName + "'.");
     EnsureWindowInventoryOpenActiveShip();
-
+    var DestinationContainerLabelRegexPattern =
+            InventoryContainerLabelRegexPatternFromContainerName(DestinationContainerName);
+        var DestinationContainer =
+            WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
+            ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(DestinationContainerLabelRegexPattern) ?? false);
     for (; ; )
     {
+                EnsureWindowInventoryOpenActiveShip();
+        Host.Delay(500);
         var oreHoldListItem = WindowInventory?.SelectedRightInventory?.ListView?.Entry?.ToArray();
         var oreHoldItem = oreHoldListItem?.FirstOrDefault();
         if (null == oreHoldItem)
             break;    //    0 items in Cargo
         if (1 < oreHoldListItem?.Length)
             ClickMenuEntryOnMenuRoot(oreHoldItem, @"select\s*all");
-        var DestinationContainerLabelRegexPattern =
-            InventoryContainerLabelRegexPatternFromContainerName(DestinationContainerName);
-        var DestinationContainer =
-            WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
-            ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(DestinationContainerLabelRegexPattern) ?? false);
-        if (null == DestinationContainer)
+         if (null == DestinationContainer)
             Host.Log("               Houston, we have a problem: '" + DestinationContainerName + "' not found");
         Sanderling.MouseDragAndDrop(oreHoldItem, DestinationContainer);
             Host.Log("               Unloaded ALL items to '" + DestinationContainerName + "'.");
     }
-
-}
-void StackAll ()
-{
-    Host.Log("               Stacking  All  ");
-    EnsureWindowInventoryOpen();
-    var DestinationContainerLabelRegexPattern =
-        InventoryContainerLabelRegexPatternFromContainerName(UnloadDestContainerName);
-    var DestinationContainer =
-        WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
-        ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(DestinationContainerLabelRegexPattern) ?? false);
-            Host.Delay(3111);
-                Host.Delay(1111);
+        Host.Delay(1111);
         Sanderling.MouseClickLeft(DestinationContainer);
-    if (activeshipnameRatting )
-    {
-
-        Host.Delay(1111);
-        Sanderling.MouseClickLeft(WindowInventory?.InputText?.FirstOrDefault());
-        Sanderling.TextEntry(MTUName);
-        var oreHoldListItem = WindowInventory?.SelectedRightInventory?.ListView?.Entry?.ToArray();
-        var oreHoldItem = oreHoldListItem?.FirstOrDefault();
-        Sanderling.WaitForMeasurement();
-        Sanderling.MouseDragAndDrop(oreHoldItem , WindowInventory?.ActiveShipEntry);
-        Host.Delay(1111);
-        Sanderling.MouseClickLeft(WindowInventory?.SelectedRightFilterButtonClear);
-    }
-    ClickMenuEntryOnMenuRoot(WindowInventory?.SelectedRightInventory?.ListView?.Entry?.FirstOrDefault(), @"stack all");
-    Host.Delay(1111);
+        ClickMenuEntryOnMenuRoot(WindowInventory?.SelectedRightInventory?.ListView?.Entry?.FirstOrDefault(), @"stack all");
         Host.Log("               Stack All in '" + UnloadDestContainerName+ "' .");
 }
 
@@ -2141,7 +2140,7 @@ void  ChangeToRatting ()
             NoMoreRats = false;
         Sanderling.MouseClickLeft(Measurement?.Neocom?.InventoryButton);
             Host.Delay(3111);
-        StackAll ();
+        //refill mtu?
     }
 }
 
@@ -2206,12 +2205,8 @@ bool IsNeutralOrEnemy(IChatParticipantEntry participantEntry) =>
      .Any(goodStandingText =>
         flagIcon?.HintText?.RegexMatchSuccessIgnoreCase(goodStandingText) ?? false)) ?? false);
 
-
-
-
-
-
-
-
-
-
+bool MatePlayer (IChatParticipantEntry participantEntry) =>
+   !(participantEntry?.FlagIcon?.Any(flagIcon =>
+     new[] { "Pilot is in your (fleet|corporation)", }
+     .Any(goodStandingText =>
+        flagIcon?.HintText?.RegexMatchSuccessIgnoreCase(goodStandingText) ?? false)) ?? false);
