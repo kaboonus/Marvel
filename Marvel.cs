@@ -1,5 +1,5 @@
 /*MaRBeL-1v3 MTU Anomaly Ratting Bot + salvage drones + refill drones + SAFE EWAR
-gila version 
+take first the frigates
 delete lines with new System.Media.SoundPlayer
 https://forum.botengine.org/t/kaboonus-scripts-guide-wiki-page-so-do-not-respond-in-this-one/2156
 **Thy Viir for helping me to optimise the code and having all that in  max filesize
@@ -26,12 +26,12 @@ var CurrentSystem = InfoPannelRegion.Substring(0,InfoPannelRegion.IndexOf(' ')).
 var MyOwnChar  = chatLocal?.ParticipantView?.Entry?.FirstOrDefault(myflag =>myflag?.FlagIcon == null);
 string CharName = MyOwnChar?.NameLabel?.Text.ToLower();
 
-string MyMTUName;
+string MTUName;
 Dictionary<string,string> NamingMtu=new Dictionary<string,string>();
 NamingMtu.Add("mychar1", "1mtu");
 NamingMtu.Add("mychar2", "2mtu");
-NamingMtu.TryGetValue(CharName,out MyMTUName);
-string WarpToAnomalyDistance = "Within 10 km";
+NamingMtu.TryGetValue(CharName,out MTUName);
+string WarpToAnomalyDistance = "Within 30 km";
 string RattingShipName = "!Vexor|Vexor";
 string SalvageShipName = "Noctis|Gnosis";
 var UseMissiles = true;
@@ -82,7 +82,8 @@ string CelestialToAvoid = "Chemical Factory";
 string commanderNameWreck = "Commander|Dark Blood|true|Shadow Serpentis|Dread Gurista|Domination Saint|Gurista Distributor|Sentient|Overseer|Spearhead|Dread Guristas|Estamel|Vepas|Thon|Kaikka|True Sansha|Chelm|Vizan|Selynne|Brokara|Dark Blood|Draclira|Ahremen|Raysere|Tairei|Cormack|Setele|Tuvan|Brynn|Domination|Tobias|Gotan|Hakim|Mizuro";
 var StopCapacitorValue = 37;
 int DroneNumber = 5;
-int TargetCountMax = 2;
+int TargetCountMax = 6;
+
 var ActivatePerma = true;
 var ActivateArmorRepairer = false;// true to be all time actived
 var ActivateShieldBooster = false;
@@ -103,7 +104,7 @@ var StartShieldRepairerHitPoints = 55;
 static public Int64 Height(this RectInt rect) => rect.Side1Length();
 static public bool IsScrollable(this MemoryStruct.IScroll scroll) => scroll?.ScrollHandle?.Region.Height() < scroll?.ScrollHandleBound?.Region.Height() - 4;
 string LabelNameSalvageDrones = "Salvage Drone I";
-string MTUName = "Mobile Tractor Unit";
+
 //keys
 var lockTargetKeyCode = VirtualKeyCode.LCONTROL;
 var targetLockedKeyCode = VirtualKeyCode.SHIFT;
@@ -117,10 +118,10 @@ var Dockkey = VirtualKeyCode.VK_D;
 var FullCargoMessage = false;
 var OldSiteExist = false;
 var ImOnSite = false;
-var NoMoreRats = false;
+var MeChangeSalvage = false;
 var SiteFinished = false;
 var UseSalvageDrones = false;
-var UseMTU = true;
+
 DateTime maxTimeToStop;
     int Atstart = 0;
     int K=1;
@@ -178,8 +179,8 @@ MemoryUpdate();
 Host.Log(
 		" >   " +CharName?.ToUpper()+  "    Started  in " +CurrentSystem+ " script: " +VersionScript+
 		" ;   Logout in:  "  + ((TimeSpan.FromMinutes(logoutgame) < TimeSpan.Zero) ? "-" : "") + (TimeSpan.FromMinutes(logoutgame)).ToString(@"hh\:mm\:ss")+
-        " ;   Sites  " + sitescount+ 
-        " ;   Rats  : " + ListRatOverviewEntry?.Length + " ; killed " +killedratscompared+ 
+        " ;   Sites  " + sitescount+
+        " ;   Rats  : " + ListRatOverviewEntry?.Length + " ; killed " +killedratscompared+
         " ;   Local Count / Visibles : " +localCount+  " / " + MaxInLocal+ " ; "+
         " ☾⊙☽   Shield: " + ShieldHpPercent + "% ; Armor: " + ArmorHpPercent + "%" +
         "\n" +
@@ -190,16 +191,14 @@ Host.Log(
         "\n" +
         "                              ⊙ OldSiteExist    :    " +OldSiteExist+
         " ;  ⊙ Use Drones for Salvage :  " +UseSalvageDrones+
-        " ;  ⊙ Use MTU   : " + UseMTU+
-        " ;  ⊙ No More Rats  : " +NoMoreRats+
+
         " ;  ⊙ Site Finished   : " +SiteFinished+
-        
         "\n" +
 		"                               >>  Hostiles: " +(chatLocal?.ParticipantView?.Entry?.Count(IsNeutralOrEnemy)-1)+ " ignored: "  +IgnoreListCount + "  Drones: (All/heavy): "  +(DronesInSpaceCount + DronesInBayCount)+ "( "+ (DronesInBayCombatFolderCount + DronesInSpaceCombatFolderCount) +  " )"+" space:"+ DronesInSpaceCount +  
 
 		" ;   Targets:  " + Measurement?.Target?.Length+
 		" ;   Cargo: " + OreHoldFillPercent + "%" +
-		" ;   Salvagers (inactive): " + SetModuleSalvager?.Length + "(" + SetModuleSalvagerInactive?.Length + 
+		" ;   Salvagers (inactive): " + SetModuleSalvager?.Length + "(" + SetModuleSalvagerInactive?.Length +
 		" ;   Wrecks: " + ListWreckOverviewEntry?.Length+
         "\n" +
         "                                                 <<<<<☾⊙☽>> Retreat Msg : "  + RetreatReason +
@@ -229,8 +228,6 @@ while (SpeedWarping)
     {
         var probeScannerWindow = Measurement?.WindowProbeScanner?.FirstOrDefault();
         var scanActuallyAnomaly = probeScannerWindow?.ScanResultView?.Entry?.FirstOrDefault(ActuallyAnomaly);
-        if (probeScannerWindow == null)
-            FlashWindowProbes();
         if ((null != scanActuallyAnomaly) && 0 < listOverviewEntryFriends?.Length && ListCelestialObjects?.Length > 0)
             ClickMenuEntryOnMenuRoot(scanActuallyAnomaly, "Ignore Result");
         if (OldSiteExist && 0 < listOverviewEntryFriends?.Length && ListCelestialObjects?.Length > 0)
@@ -253,33 +250,29 @@ if(null != RetreatReason && !(Measurement?.IsDocked ?? false))
 
     if (!Tethering)
     {
-        Messages("               Tactical retreat,  reason  : " + RetreatReason + ".");
-
         ModuleStopToggle(ModuleAfterburner);
         DroneEnsureInBay();
         ActivateArmorExecute();
-        ModuleToggle(ModuleShieldBooster);
+        if (Sanderling.MemoryMeasurementAccu?.Value?.ShipUiModule.Count(m => m?.TooltipLast?.Value?.IsShieldBooster ?? false) >0)
+        	ModuleToggle(ModuleShieldBooster);
         if (listOverviewEntryEnemy?.Length > 0)
         {
             WarpInstant ();
         }
         if (!Aligning && ReadyForManeuver && !Tethering )
         {
-                        Sanderling.KeyDown(VirtualKeyCode.VK_A);
-        Sanderling.MouseClickLeft(listOverviewStationName?.FirstOrDefault());
-        Sanderling.KeyUp(VirtualKeyCode.VK_A);
-        Messages("               align");
+            Sanderling.KeyDown(VirtualKeyCode.VK_A);
+            Sanderling.MouseClickLeft(listOverviewStationName?.FirstOrDefault());
+            Sanderling.KeyUp(VirtualKeyCode.VK_A);
+            Messages("               align");
         }
         DroneEnsureInBay();
 
         if (null !=RetreatReasonDread)
         {
-            var probeScannerWindow = Measurement?.WindowProbeScanner?.FirstOrDefault();
-            if (probeScannerWindow == null)
-                FlashWindowProbes();
             var scanActuallyAnomaly = probeScannerWindow?.ScanResultView?.Entry?.FirstOrDefault(ActuallyAnomaly);
-                Host.Log("               Runing from dread");
-                deleteBookmark();
+            Host.Log("               Runing from dread");
+            deleteBookmark();
             SavingLocation ();
         if (null != scanActuallyAnomaly)
             {
@@ -287,16 +280,16 @@ if(null != RetreatReason && !(Measurement?.IsDocked ?? false))
             }
         }
         if(0 == DronesInSpaceCount)
-                {
-        if (listOverviewStationName?.Length > 0 &&( null != RetreatReason) && !SpeedWarping)
+        {
+            if (listOverviewStationName?.Length > 0 &&( null != RetreatReason) && !SpeedWarping)
                 WarpInstant ();
-        if (ReadyForManeuver  &&  null == WindowDrones )
-            {
-                Messages("               Picard : Slowly warping home");
-                WarpingSlow(RetreatBookmark, "dock");
-                Console.Beep(1500, 200);
-                K=1;
-            }
+            if (ReadyForManeuver  &&  null == WindowDrones )
+                {
+                    Messages("              warping home");
+                    WarpingSlow(RetreatBookmark, "dock");
+                    Console.Beep(1500, 200);
+                    K=1;
+                }
         }
         else
             DroneEnsureInBay();
@@ -320,7 +313,7 @@ Host.Delay(1111);
 int? localCount => chatLocal?.ParticipantView?.Entry?.Count();
 int? HulHpPercent => ShipUi?.HitpointsAndEnergy?.Struct / 10;
 int? ShieldHpPercent => ShipUi?.HitpointsAndEnergy?.Shield / 10;
-int? ArmorHpPercent => ShipUi?.HitpointsAndEnergy?.Armor / 10;
+int? ArmorHpPercent =>(!(Measurement?.IsDocked ?? false) && !(Measurement?.IsUnDocking ?? false)) ? ShipUi?.HitpointsAndEnergy?.Armor / 10 : 100;
 int? CapacitorHpPercent => ShipUi?.HitpointsAndEnergy?.Capacitor / 10;
 int? LastCheckNumberRatsSynced = null;
 int? LastCheckOreHoldFillPercent = null;
@@ -361,7 +354,7 @@ Func<object> MainStep()
     while (ReadyForManeuverNot)
     {
         Host.Delay(2111);
-        Host.Log("               docking/warping from main step prepare for anomaly");
+        Host.Log("               docking/warping ");
     return InBeltMineStep;
     }
     EnsureWindowInventoryOpen();
@@ -381,8 +374,9 @@ if (Measurement?.IsDocked ?? false)
         if ( ReasonTimeElapsed || ReasonCapsuled ||ReasonDrones || ( !activeshipnameRatting && !activeshipnameSalvage))
         {
         Host.Log("               bot stop: Capsule:  " +ReasonCapsuled+ "  Drones : " +ReasonDrones+ " time :  " +ReasonTimeElapsed+ "" );
-            //Sanderling.KillEveProcess();
-            Host.Delay(3111);
+        if ( ReasonTimeElapsed )
+            Sanderling.KillEveProcess();
+        Host.Delay(3111);
             return BotStopActivity;
         }
         while (YesHostiles || tooManyOnLocal)
@@ -401,21 +395,20 @@ if (Measurement?.IsDocked ?? false)
             {
             Host.Log("               activeshipname :  " +WindowInventory?.ActiveShipEntry?.Text.ToString());
             InInventoryUnloadItems();
-            
             }
-        if (ChangingToSalvager != null)// && UseSalvageDrones) 
+        if (ChangingToSalvager != null)
             ChangeToSalvage ();
-        if (null != SiteFinishRetreat)
+        if (SiteFinished == true ||  SiteFinishRetreat != null)
             ChangeToRatting () ;
         Sanderling.WaitForMeasurement();
         Host.Delay(4111);
+         EnsureWindowInventoryOpen();
 
-            if (activeshipnameRatting )
-        {
+        if (activeshipnameRatting )
+            {
             NoQuantity = true;
-        RefillGoods(MTUName , InventoryActiveShipContainer);
-                    Refill ();
-        }
+            Refill ();
+            }
 
         RepairShop ();
         UseSalvageDrones = false;
@@ -465,7 +458,7 @@ if (ReadyForManeuver)
             {
                 	   while (DronesInSpaceCount>0 )
 	        DroneEnsureInBay();
-            Host.Log("               retreat for a reason from main step !   " + RetreatReason);
+            Host.Log("               retreat  main step !   " + RetreatReason);
             WarpingSlow(RetreatBookmark, "dock");
             return MainStep;
             }
@@ -475,7 +468,7 @@ if (ReadyForManeuver)
                 MoveDronesToFolder();
             if ( OreHoldFillPercent > 33)
                 {
-                Host.Log("               You won't start a new anomaly with the cargo at : " +OreHoldFillPercent+ " %  . Go to unload !");
+                Host.Log("                cargo at : " +OreHoldFillPercent+ " %  . Go to unload !");
                 WarpingSlow(RetreatBookmark, "dock");
                 return MainStep;
                 }
@@ -639,8 +632,7 @@ var AmmoInventoryCount =(WindowInventory?.SelectedRightInventory?.ListView?.Entr
 			var menuResultWarpDestination = Measurement?.Menu?.ToList() ? [1].Entry.ToArray();
 			Messages("               The Force be with you, in to the next journey to : " +AnomalyToTake+ "  . ");
 			ClickMenuEntryOnMenuRoot(menuResultWarpDestination[x], WarpToAnomalyDistance);
-            NoMoreRats = false;
-              Host.Log("no more rats true? :    " +NoMoreRats+ "      ChangingToSalvager ? :    " +ChangingToSalvager+ ""); 
+            Host.Log("    ChangingToSalvager ? :    " +ChangingToSalvager+ ""); 
 			if (probeScannerWindow != null)
 			FlashWindowProbes();
             return InBeltMineStep;
@@ -678,7 +670,7 @@ var AmmoInventoryCount =(WindowInventory?.SelectedRightInventory?.ListView?.Entr
 Func<object> DefenseStep()
 {
     if (BackOnMainStep)
-        return null;
+        return MainStep;
     if (ActivatePerma  )
         PermaExecute();
     if (combatTab != OverviewTabActive )
@@ -687,21 +679,16 @@ Func<object> DefenseStep()
     Host.Delay(311);
     }
     Host.Log("               Defense step " );
-        var NPCtargheted = Measurement?.Target?.Length;
-        var shouldAttackTarget = (ListRatOverviewEntry?.Any(entry => entry?.MeActiveTarget ?? false) ?? false) && (null ==Measurement?.Target?.FirstOrDefault()?.LabelText?.FirstOrDefault(label => label?.Text?.RegexMatchSuccess(MTUName, System.Text.RegularExpressions.RegexOptions.IgnoreCase) ?? false));
-        var targetSelected = Measurement?.Target?.FirstOrDefault(target => target?.IsSelected ?? false);
-        var Broken = ListCelestialObjects?.FirstOrDefault();
-    var overviewEntryLockTarget =
-            ListRatOverviewEntry?.FirstOrDefault(entry => !((entry?.MeTargeted ?? false) || (entry?.MeTargeting ?? false)));
-
+        var shouldAttackTarget = (ListRatOverviewEntry?.Any(entry => entry?.MainIconIsRed ?? false) ?? false) && (null ==Measurement?.Target?.FirstOrDefault()?.LabelText?.FirstOrDefault(label => label?.Text?.RegexMatchSuccess(MTUName, System.Text.RegularExpressions.RegexOptions.IgnoreCase) ?? false));
     var droneInLocalSpaceIdle =
-        AllDrones?.Any(drone =>drone?.LabelText?.FirstOrDefault()?.Text?.Contains("Idle") ?? false ) ?? false;
-//
+        AllDrones?.Any(drone =>drone?.LabelText?.FirstOrDefault()?.Text?.RegexMatchSuccessIgnoreCase("Idle") ?? false ) ?? false;
+    var droneInLocalSpaceFight =
+        AllDrones?.Any(drone =>drone?.LabelText?.FirstOrDefault()?.Text?.RegexMatchSuccessIgnoreCase("Fighting") ?? false ) ?? false;
+
     CountingRatsUpdate();
     if(null != RetreatReason && !Tethering && !(Measurement?.IsDocked ?? false))
     {
-        Host.Log("               good to activate");
-        ActivateArmorExecute();
+                ActivateArmorExecute();
     }
     if (Sanderling.MemoryMeasurementAccu?.Value?.ShipUiModule.Count(m => (m?.TooltipLast?.Value?.IsArmorRepairer ?? false) || (m?.TooltipLast?.Value?.LabelText?.Any(
                 label => label?.Text?.RegexMatchSuccess(UnsupportedArmorRepairer, System.Text.RegularExpressions.RegexOptions.IgnoreCase) ?? false) ?? false))>0)
@@ -724,25 +711,67 @@ Func<object> DefenseStep()
         if (ShieldHpPercent > StartShieldRepairerHitPoints && ActivateShieldBooster == false )
             ModuleStopToggle(ModuleShieldBooster);
     }
-        if (Measurement?.ShipUi?.Indication?.ManeuverType != ShipManeuverTypeEnum.Orbit)
-    {
-        Orbitkeyboard();
-    }
+    if (Measurement?.ShipUi?.Indication?.ManeuverType != ShipManeuverTypeEnum.Orbit)
+        {
+            Orbitkeyboard();
+        }
 
 	Expander(CombatDronesFolder);
-    if (null == targetSelected)
-        LockTarget();
-    if (null != targetSelected)
+    
+    if (!ListRatOverviewEntry?.Where( x => !x.EWarType?.IsNullOrEmpty() ?? false)?.IsNullOrEmpty() ?? false && (EWarToAttack?.FirstOrDefault()?.MeTargeted ?? false))
     {
+    Sanderling.MouseClickLeft(Measurement?.Target?.FirstOrDefault( target =>((target?.DistanceMax.Value == EWarToAttack?.FirstOrDefault()?.DistanceMax.Value )&&( target ?.TextRow.Contains( EWarToAttack?.FirstOrDefault()?.Name) ?? false))));  
+    Sanderling.KeyboardPress(attackDrones);
+    Host.Log(" ewared");
+    Console.Beep(1500, 200);
+    }
+   
+    var NPCtargheted = !Measurement?.Target?.IsNullOrEmpty() ?? false ? Measurement?.Target?.Length : 0;
+    if(FrigateListRatOverviewEntry.Length > 0 && !(FrigateListRatOverviewEntry.Any(frigates => frigates?.MeTargeted ?? false)) &&  NPCtargheted < TargetCountMax ) 
+        {
+        for (int i = 0; FrigateListRatOverviewEntry.Length<7 ? i <FrigateListRatOverviewEntry.Count() : i<7 ; i++)
+        {
+        Sanderling.KeyDown(lockTargetKeyCode);
+        Sanderling.MouseClickLeft(FrigateListRatOverviewEntry.ElementAtOrDefault(i));
+        Sanderling.KeyUp(lockTargetKeyCode);
+        continue;
+        }
+        }
+    if (!(FrigateListRatOverviewEntry.Length > 0) && !(ListRatOverviewEntry.Any(npc =>npc?.MeTargeted ?? false)) && NPCtargheted < TargetCountMax)// && 1 < ListRatOverviewEntry?.Length)
+    {
+        for (int i = 0; ListRatOverviewEntry.Length<TargetCountMax ? i <ListRatOverviewEntry.Length : i<TargetCountMax ; i++)
+        {
+            Sanderling.KeyDown(lockTargetKeyCode);
+        Sanderling.MouseClickLeft(ListRatOverviewEntry.ElementAtOrDefault(i));
+            Sanderling.KeyUp(lockTargetKeyCode);  
+        continue;
+        }
+    }
+    if (!Measurement?.Target?.IsNullOrEmpty() ?? false)
+    {
+        var TargetList = Measurement?.Target
+            ?.OrderBy(entry => entry?.TextRow?.ToString()?.RegexMatchSuccessIgnoreCase(@"Domination|Commander|Dread|True|Shadow|Sentient"))
+            ?.OrderBy(entry => entry?.TextRow?.ToString()?.RegexMatchSuccessIgnoreCase(@"battery|tower|sentry|web|strain|splinter|render|raider|friar|reaver|guardian|loyal|dire|elder|arch"))
+            ?.OrderBy(entry => entry?.TextRow?.ToString()?.RegexMatchSuccessIgnoreCase(@"coreli|centi|alvi|pithi|corpii|gistii|cleric|engraver")) //Frigate
+            ?.OrderBy(entry => entry?.TextRow?.ToString()?.RegexMatchSuccessIgnoreCase(@"corelior|centior|alvior|pithior|corpior|gistior")) //Destroyer
+            ?.OrderBy(entry => entry?.TextRow?.ToString()?.RegexMatchSuccessIgnoreCase(@"corelum|centum|alvum|pithum|corpum|gistum|prophet")) //Cruiser
+            ?.OrderBy(entry => entry?.TextRow?.ToString()?.RegexMatchSuccessIgnoreCase(@"corelatis|centatis|alvatis|pithatis|corpatis|gistatis|apostle")) //Battlecruiser
+            ?.OrderBy(entry => entry?.TextRow?.ToString()?.RegexMatchSuccessIgnoreCase(@"core\s|centus|alvus|pith\s|corpus|gist\s")) //Battleship
+            //?.ThenBy(entry => entry?.DistanceMax?? int.MaxValue)
+            ?.ToArray();
+
         if (shouldAttackTarget)
         {
         if (ModuleWeapon?.Length>0  && Measurement?.Target?.FirstOrDefault(target => target?.IsSelected ?? false).DistanceMax < WeaponMaxRange)
+            { 
+            Sanderling.MouseClickLeft(TargetList.FirstOrDefault());
             ShootWeapon();
+            }
 
-		if (CapacitorHpPercent > StopCapacitorValue)
-            ActivatePainterExecute();
+
 		if (droneInLocalSpaceIdle && (Measurement?.Target?.Length > 0))
 			{
+                Sanderling.MouseClickLeft(TargetList.FirstOrDefault());
                 ActivatePainterExecute();
 				Sanderling.KeyboardPress(attackDrones);
 				Messages("               Vipers engage the target " );
@@ -755,13 +784,23 @@ Func<object> DefenseStep()
     if (droneInLocalSpaceIdle && ListRatOverviewEntry?.FirstOrDefault()?.DistanceMax > ShipRangeMax)
         OrbitRats();
 
-    if (EWarToAttack?.Count() > 0)
+   if (EWarToAttack?.Length > 0)
     {
-        Messages("                Some nasty rats ewar me, engaging them !!");
-        HuntingEwarShips ();
+
+        var EWarTargeted = EWarToAttack?.FirstOrDefault(target => target?.MeTargeted ?? false);
+        if (EWarTargeted == null)
+        {
+            Sanderling.KeyDown(lockTargetKeyCode);
+            Sanderling.MouseClickLeft(EWarToAttack?.FirstOrDefault(entry => !((entry?.MeTargeted ?? false))));
+            Sanderling.KeyUp(lockTargetKeyCode);
+        }
+        else 
+            Sanderling.MouseClickLeft(Measurement?.Target?.FirstOrDefault( target =>((target?.DistanceMax.Value == EWarToAttack?.FirstOrDefault()?.DistanceMax.Value )&&( target ?.TextRow.Contains( EWarToAttack?.FirstOrDefault()?.Name) ?? false))));  
+        new System.Media.SoundPlayer(@"C:\attack.wav").Play();
+        Sanderling.KeyboardPress(attackDrones);
+        Host.Log("               '"  + EWarTargeted?.Name+  "' .  This  " +EWarTargeted?.RightIcon?.FirstOrDefault()?.HintText+ " ...!");
     }
-    if (Measurement?.Target?.Length < TargetCountMax && 1 < ListRatOverviewEntry?.Length)
-        LockTarget();
+
     if ( (DronesInSpaceCount + DronesInBayCount ) < DroneNumber)
     {
         Sanderling.InvalidateMeasurement();
@@ -775,7 +814,11 @@ Func<object> DefenseStep()
         DroneLaunch();
     if (DefenseExit)
     {
-            ModuleStopToggle(ModuleAfterburner);
+            Host.Delay(4311);// lastly a new wave appear so we check in 4sec
+        Sanderling.WaitForMeasurement();
+        if (DefenseEnter)
+            return DefenseStep
+        ModuleStopToggle(ModuleAfterburner);
         while (DronesInSpaceCount>0 )
                 DroneEnsureInBay();
         new System.Media.SoundPlayer(@"C:\Appear.wav").Play();
@@ -785,20 +828,16 @@ Func<object> DefenseStep()
         Messages(" defense ended");
         if (listOverviewMtu?.Length >0)
         {
-            UseMTU = true;
-            NoMoreRats = true;
-            Host.Log(" UseMTU : "  +UseMTU+"" );
-        return InBeltMineStep;
+            Host.Log(" MTU  COUNT " +listOverviewMtu?.Length );
+            MeChangeSalvage = true;
+            //return InBeltMineStep;
         }
         else
         {
-        UseMTU = false;
-        NoMoreRats = true;
-        Host.Log(" UseMTU : "  +UseMTU+"" );
+        MeChangeSalvage = false;
         return InBeltMineStep;
         }
     }
-    CleanWindowProbe();
         return DefenseStep;
 }
 //
@@ -815,7 +854,7 @@ Func<object> InBeltMineStep()
         return MainStep;
         }
 
-    while (!ReadyForManeuver || SpeedWarping)
+    if (!ReadyForManeuver || SpeedWarping)
         return InBeltMineStep;
     if (ActivatePerma )
         PermaExecute();
@@ -831,7 +870,7 @@ Func<object> InBeltMineStep()
     EnsureWindowInventoryOpen();
     EnsureWindowInventoryOpenActiveShip();
 
-    if (activeshipnameRatting)
+    if (activeshipnameRatting && !SpeedWarping)
     {
         if (combatTab != OverviewTabActive)
         {
@@ -890,10 +929,9 @@ Func<object> InBeltMineStep()
             }
 
             DroneEnsureInBay();
-                Messages("              MTU COUNT  " +listOverviewMtu?.Count()+"");
             if (listOverviewMtu?.Length >0)
             {
-                UseMTU = true;
+                MeChangeSalvage = true;
                 return MainStep;
             }
             else
@@ -904,7 +942,6 @@ Func<object> InBeltMineStep()
                     UseSalvageDrones = false;
                 if (UseSalvageDrones)
                 {
-                    Messages("               Try to use drones to salvage :  UseMTU  = " +UseMTU+ " ; UseSalvageDrones = " +UseSalvageDrones+ "");
                     if( 0 < ListWreckOverviewEntry.Length)
                         return DronesAreSalvagingStep;
                     else
@@ -921,8 +958,7 @@ Func<object> InBeltMineStep()
         {
             if (listOverviewMtu?.Length >0 )
             {
-                UseMTU = true;
-                NoMoreRats = true;
+                MeChangeSalvage = true;
             }
             else
                 return FinishingAsite;
@@ -946,7 +982,7 @@ Func<object> InBeltMineStep()
             else
                 WarpingSlow(RetreatBookmark, "dock");
         }
-        NoMoreRats = false;
+        
         if (DefenseEnter)
         {
             Messages("               Salvage mode,  running from rats");
@@ -994,7 +1030,6 @@ Func<object> DronesAreSalvagingStep()
             Host.Delay(1111);
     }
 
-    CleanWindowProbe();
     Expander(SalvageDronesFolder);
 
     if (UseSalvageDrones && 0 < ListWreckOverviewEntry.Length && DronesInBayListFolderSalvageEntry != null)
@@ -1049,7 +1084,6 @@ Func<object> SalvagingStep()
                 ClickMenuEntryOnMenuRoot(listOverviewMtu?.FirstOrDefault(), "open cargo");
         }
             Messages("               no wrecks to salvage with salvagers, Finish the site");
-        LootValue();
         return FinishingAsite;
     }
     if (null == moduleSalvagerInactive)
@@ -1059,39 +1093,56 @@ Func<object> SalvagingStep()
     }
     var setTargetWreckInRange   =
         SetTargetWreck?.Where(target => target?.DistanceMax <= salvageRange)?.ToArray();
-    var setTargetWreckInRangeNotAssigned =
-        setTargetWreckInRange?.Where(target => !(0 < target?.Assigned?.Length))?.ToArray();
-    if(0 < setTargetWreckInRangeNotAssigned?.Length)
-    {
-        var targetWreckInputFocus   =
-            setTargetWreckInRangeNotAssigned?.FirstOrDefault(target => target?.IsSelected ?? false);
-        if(null == targetWreckInputFocus)
-            Sanderling.MouseClickLeft(setTargetWreckInRangeNotAssigned?.FirstOrDefault());
-        ModuleToggle(moduleSalvagerInactive);
-        return SalvagingStep;
-    }
-    var wreckOverviewEntryNext = ListWreckOverviewEntry?.FirstOrDefault();
-    var wreckOverviewEntryNextNotTargeted = ListWreckOverviewEntry?.FirstOrDefault(entry => !((entry?.MeTargeted ?? false) || (entry?.MeTargeting ?? false)));
 
-    if(null == wreckOverviewEntryNext)
+    var wreckOverviewEntryNextNotTargeted = ListWreckOverviewEntry?.Where(entry => !((entry?.MeTargeted ?? false) || (entry?.MeTargeting ?? false))).ToArray();
+    if (wreckOverviewEntryNextNotTargeted?.FirstOrDefault()?.DistanceMax > salvageRange)
     {
-        return SalvagingStep;
-    }
-    if(null == wreckOverviewEntryNextNotTargeted)
-    {
-        return SalvagingStep;
-    }
-    if (wreckOverviewEntryNextNotTargeted.DistanceMax > salvageRange)
-    {
-        ClickMenuEntryOnMenuRoot(wreckOverviewEntryNextNotTargeted, "approach");
         Messages("out of range");//to add something if need
+        ClickMenuEntryOnMenuRoot(wreckOverviewEntryNextNotTargeted?.FirstOrDefault(), "approach");
+
     }
     else
     {
+    var virtualtargets =(!Measurement?.Target?.IsNullOrEmpty() ?? false ) ? Measurement?.Target?.Length:0;
+    Host.Log(" "+Measurement?.Target?.Length+ " ; " +SetModuleSalvagerInactive?.Length + "   ; " +virtualtargets );
+    if (  (Measurement?.Target?.IsNullOrEmpty() ?? false) || (virtualtargets <5 && !(ListWreckOverviewEntry?.IsNullOrEmpty() ?? false)))
+            for (int i = 0; i < SetModuleSalvagerInactive?.Length ; i++)
+           {
+           virtualtargets =(!Measurement?.Target?.IsNullOrEmpty() ?? false ) ? Measurement?.Target?.Length:0;
+           if (virtualtargets == SetModuleSalvagerInactive?.Length)
+           break;
             Sanderling.KeyDown(lockTargetKeyCode);
-            Sanderling.MouseClickLeft(wreckOverviewEntryNextNotTargeted);
-            Sanderling.KeyUp(lockTargetKeyCode);
+            Sanderling.MouseClickLeft(wreckOverviewEntryNextNotTargeted.ElementAtOrDefault(i));
+            Sanderling.KeyUp(lockTargetKeyCode);  
+           continue;
+           }
     }
+
+    var setTargetWreckInRangeNotAssigned =
+        setTargetWreckInRange?.Where(target => !(0 < target?.Assigned?.Length))?.ToArray();
+    if(SetModuleSalvagerInactive?.Length >0  && setTargetWreckInRangeNotAssigned?.Length >0)
+    {
+    for (int i = 0; i <SetModuleSalvagerInactive?.Length ; i++)
+        {
+        setTargetWreckInRangeNotAssigned =
+            setTargetWreckInRange?.Where(target => !(0 < target?.Assigned?.Length))?.ToArray();
+        if (setTargetWreckInRangeNotAssigned?.IsNullOrEmpty() ?? false)
+        break;
+        Sanderling.MouseClickLeft(setTargetWreckInRangeNotAssigned?.ElementAtOrDefault(i));
+        ModuleToggle(SetModuleSalvagerInactive?.ElementAtOrDefault(i));
+        continue;
+        }
+    return SalvagingStep;
+    }
+    var wreckOverviewEntryNext = ListWreckOverviewEntry?.FirstOrDefault();
+
+
+    if(null == wreckOverviewEntryNext || null == wreckOverviewEntryNextNotTargeted)
+    {
+        Host.Log("   no more wrecks??    ");
+        return SalvagingStep;
+    }
+
     return SalvagingStep;
 }
 ///
@@ -1113,11 +1164,9 @@ Func<object> FinishingAsite()
     if (listOverviewMtu?.Length >0)
         RecoverMtu ();
     else
-        UseMTU = false;
-    LootValue();
+        MeChangeSalvage = false;
     KaboonusTalk();
     ++sitescount;
-    NoMoreRats = true;
     if (OreHoldCapacityMilli?.Used > 0 )
         SiteFinished = true;
     else
@@ -1177,15 +1226,18 @@ Sanderling.Accumulation.IShipUiModule[] ModuleWeapon =>
 	Sanderling.MemoryMeasurementAccu?.Value?.ShipUiModule?.Where(module => (module?.TooltipLast?.Value?.IsWeapon ?? false) || (module?.TooltipLast?.Value?.IsWeapon?? false))?.ToArray();
 string OverviewTypeSelectionName =>
     WindowOverview?.Caption?.RegexMatchIfSuccess(@"\(([^\)]*)\)")?.Groups?[1]?.Value;
+
+Parse.IOverviewEntry[] FrigateListRatOverviewEntry => WindowOverview?.ListView?.Entry?.Where(entry =>
+   ( (entry?.MainIconIsRed ?? false)
+   &&( entry?.Name?.RegexMatchSuccessIgnoreCase(@"coreli|centi|alvi|pithi|corpii|gistii|cleric|engraver|corelum
+   |battery|tower|sentry|web|strain|splinter|render|raider|friar|reaver|guardian|loyal|dire|elder|arch") ?? false)
+    ))
+    ?.OrderBy(entry => entry?.DistanceMax ?? int.MaxValue)
+    ?.ToArray();
+
 Parse.IOverviewEntry[] ListRatOverviewEntry => WindowOverview?.ListView?.Entry?.Where(entry =>
     (entry?.MainIconIsRed ?? false))
-    ?.OrderBy(entry => entry?.Name?.RegexMatchSuccessIgnoreCase(@"battery|tower|sentry|web|strain|splinter|render|raider|friar|reaver")) 
-    ?.OrderBy(entry => entry?.Name?.RegexMatchSuccessIgnoreCase(@"coreli|centi|alvi|pithi|corpii|gistii|cleric|engraver")) //Frigate
-    ?.OrderBy(entry => entry?.Name?.RegexMatchSuccessIgnoreCase(@"corelior|centior|alvior|pithior|corpior|gistior")) //Destroyer
-    ?.OrderBy(entry => entry?.Name?.RegexMatchSuccessIgnoreCase(@"corelum|centum|alvum|pithum|corpum|gistum|prophet")) //Cruiser
-    ?.OrderBy(entry => entry?.Name?.RegexMatchSuccessIgnoreCase(@"corelatis|centatis|alvatis|pithatis|corpatis|gistatis|apostle")) //Battlecruiser
-    ?.OrderBy(entry => entry?.Name?.RegexMatchSuccessIgnoreCase(@"core\s|centus|alvus|pith\s|corpus|gist\s")) //Battleship
-    ?.ThenBy(entry => entry?.DistanceMax ?? int.MaxValue)
+    ?.OrderBy(entry => entry?.DistanceMax ?? int.MaxValue)
     ?.ToArray();
 
 Parse.IOverviewEntry[] listOverviewCommanderWreck =>
@@ -1213,9 +1265,8 @@ Parse.IOverviewEntry[] listOverviewEntryEnemy =>
     ?.Where(entry => entry?.ListBackgroundColor?.Any(IsEnemyBackgroundColor) ?? false)
     ?.ToArray();
 Parse.IOverviewEntry[] listOverviewMtu => WindowOverview?.ListView?.Entry
-    ?.Where(mtu => ((YesTeam ? (mtu?.Name?.RegexMatchSuccessIgnoreCase(MyMTUName) ?? true)
-        : (mtu?.Type?.RegexMatchSuccessIgnoreCase(MTUName) ?? true) ) 
-        && (mtu?.ListColumnCellLabel?.FirstOrDefault(corp =>corp.Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? false ).Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? true)  ))
+    ?.Where(mtu =>  (mtu?.Name?.RegexMatchSuccessIgnoreCase(MTUName) ?? true) 
+        && (mtu?.ListColumnCellLabel?.FirstOrDefault(corp =>corp.Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? false ).Value?.RegexMatchSuccessIgnoreCase(MyCorpo) ?? true)  )
     .ToArray();
 Sanderling.Accumulation.IShipUiModule[] SetModuleSalvager =>
     Sanderling.MemoryMeasurementAccu?.Value?.ShipUiModule?.Where(module => module?.TooltipLast?.Value?.LabelText?.Any(
@@ -1314,7 +1365,7 @@ public bool EmptyIndication =>
     Measurement?.ShipUi?.Indication?.LabelText?.Any(indicationLabel =>
         (indicationLabel?.Text).RegexMatchSuccessIgnoreCase("")) ?? false;
 public bool ShipIsSleeping => (EmptyIndication || !(MySpeed>2));
-public bool ReadyForManeuver => !ReadyForManeuverNot  && !(Measurement?.IsDocked ?? true);
+public bool ReadyForManeuver => !Dockinginstance  && !(Measurement?.IsDocked ?? true);
 public bool ReadyToBattle => 0 < ListRatOverviewEntry?.Length && ReadyForManeuver;
 public bool NoRatsOnGrid => 0 == ListRatOverviewEntry?.Length || ListRatOverviewEntry?.FirstOrDefault()?.DistanceMax > MaxDistanceToRats;
 public bool LookingAtStars => NoRatsOnGrid && ReadyForManeuver;
@@ -1330,7 +1381,6 @@ WindowChatChannel chatLocal =>
 //
 
 int ? IgnoreListCount  => chatLocal?.ParticipantView?.Entry?.Where(ignoreplayer =>ignoreplayer?.NameLabel?.Text?.RegexMatchSuccessIgnoreCase(IgnoreNeutral) ?? false).ToArray()?.Count() ;
-public bool YesTeam => 1 < chatLocal?.ParticipantView?.Entry?.Count(MatePlayer);
 public bool YesHostiles => 1+IgnoreListCount < chatLocal?.ParticipantView?.Entry?.Count(IsNeutralOrEnemy);
 //
 var logoutme= false;
@@ -1341,11 +1391,6 @@ bool ReasonDrones => (reasonDrones && activeshipnameRatting);
 bool ReasonCargoFull => (OreHoldFilledForOffload || FullCargoMessage);
 bool ReasonDread=> (listOverviewDreadCheck?.Length > 0);
 string Preparatus;
-int result;
-double inventoryValue;
-int SalvageValue;
-string StatusLoot;
-string StatusLootValue;
 ITreeViewEntry InventoryActiveShipDronesContainer =>
         WindowInventory?.ActiveShipEntry?.TreeEntryFromCargoSpaceType(ShipCargoSpaceTypeEnum.DroneBay);
 IInventoryCapacityGauge DronesHoldCapacityMilli =>
@@ -1360,19 +1405,7 @@ string InventoryContainerLabelRegexPatternFromContainerName(string containerName
 public bool StationProximity => listOverviewStationName?.FirstOrDefault()?.DistanceMin < 10000;
 public bool BackOnMainStep => (!ReadyForManeuver) || Tethering || (Measurement?.IsDocked ?? false) || StationProximity || null != RetreatReason;
 //////////////
-/////////////
 
-void CleanWindowProbe()
-{
-    var probeScannerWindow = Measurement?.WindowProbeScanner?.FirstOrDefault();
-    var UndesiredAnomaly = probeScannerWindow?.ScanResultView?.Entry?.FirstOrDefault(IgnoreAnomaly);
-    if (null != UndesiredAnomaly)
-    {
-        ClickMenuEntryOnMenuRoot(UndesiredAnomaly, "Ignore Result");
-        Messages("        Cleaning undesired anomaly");
-    }
-
-}
 
 void FlashWindowProbes()
 {
@@ -1381,7 +1414,7 @@ void FlashWindowProbes()
 
 void ReviewSettings()
 {
-    LogMessageToFile(" Review: "+VersionScript+ "/" +CharName+ "/" +CurrentSystem+ " # Sites : " + sitescount+ "; Total: " +MagicalPrepare+ " ISK # Session: " +Paracelsus+ " ISK ; " + (string.IsNullOrEmpty(StatusLootValue) ? "0" :  StatusLootValue)+ " LOOT;  "  +killedratscompared+ " killedrats  .  " );
+    LogMessageToFile(" Review: "+VersionScript+ "/" +CharName+ "/" +CurrentSystem+ " # Sites : " + sitescount+ "; Total: " +MagicalPrepare+ " ISK # Session: " +Paracelsus+ " ISK ; "   +killedratscompared+ " killedrats  .  " );
         Host.Log("                >>> Taped into file.");
 }
 
@@ -1480,7 +1513,7 @@ void RetreatUpdate()
     RetreatReasonArmor = (!(Measurement?.IsDocked ?? false) &&!Tethering && (!(EmergencyWarpOutHitpointPercent < ArmorHpPercent)))? " They messed my Armor hp!!" : null;
         RetreatReasonDrones = ReasonDrones ? " I lost my head ( Drones)!!" : null;
     RetreatReasonCargoFull = ReasonCargoFull ? " Cargo Full !!" : null;
-        ChangingToSalvager = (NoMoreRats && UseMTU) ? " Change to Salvage !!" : null;
+        ChangingToSalvager = (MeChangeSalvage) ? " Change to Salvage !!" : null;
     RetreatReasonBumped = (0 <= ListRatOverviewEntry?.Length) && (listOverviewEntryFriends?.Length > 0) && (listOverviewEntryFriends?.FirstOrDefault()?.DistanceMax < 250) ?" Retreat: I was bumped !!" : null;
         RetreatReasonCapsuled = ReasonCapsuled ? " Retreat: Capsuled, go home" : null;
     RetreatReasonTimeElapsed = logoutme ? " Retreat: Your session elapsed, take a break!" : null;
@@ -1717,11 +1750,6 @@ void UnlockTarget()
     Host.Log("                this is not a target");
 }
 
-
-
-
-
-
 void ModuleMeasureAllTooltip()
 {
     var moduleUnknownCount = Sanderling.MemoryMeasurementAccu?.Value?.ShipUiModule?.Count((module => null == module?.TooltipLast?.Value?.LabelText?.Any()));
@@ -1840,32 +1868,7 @@ void CheckLocation()
 
 }
 
-void HuntingEwarShips()
-{
-    for (var i=0; i<EWarToAttack?.Length; i++)
-        {
-        var EWarSelected = EWarToAttack?.FirstOrDefault(target => target?.IsSelected ?? false);
-        var EWarLocked = EWarToAttack?.FirstOrDefault(target => target?.MeTargeted ?? false);
-        ActivateArmorExecute();
-        if (EWarToAttack?.FirstOrDefault(target => target?.MeTargeted ?? false) == null)
-        {
-            Sanderling.KeyDown(lockTargetKeyCode);
-            Sanderling.MouseClickLeft(EWarToAttack?.FirstOrDefault(entry => !((entry?.MeTargeted ?? false))));
-            Sanderling.KeyUp(lockTargetKeyCode);
-        }
-         if ( EWarToAttack?.FirstOrDefault(target => target?.IsSelected ?? false) == null)
-        {
-             Sanderling.MouseClickLeft(EWarToAttack?.FirstOrDefault());
-              }
-         if ( null != EWarToAttack?.FirstOrDefault(target => target?.IsSelected ?? false))
-        {
-            Sanderling.KeyboardPress(attackDrones);
-            Console.Beep(1047,150);
-            Console.Beep(1047,150);
-            Host.Log("               '"  + EWarSelected?.Name+  "' .  This  " +EWarSelected?.RightIcon?.FirstOrDefault()?.HintText+ " ...  Some nasty rats, engaging them !!");
-        }
-        }
-}
+
 
 
 void SavingLocation ()
@@ -1942,6 +1945,7 @@ void RecoverMtu ()
 {
      while (listOverviewMtu?.Length >0 )
     {
+        MeChangeSalvage = false;
         Host.Delay(1111);
         Messages("      Recovering Mtu.");
         ClickMenuEntryOnMenuRoot(listOverviewMtu?.FirstOrDefault(), "Scoop to Cargo Hold");
@@ -1956,7 +1960,9 @@ void KaboonusTalk()
     var KaboonusWithTexturePathMatch = new Func<string, MemoryStruct.IUIElement>(texturePathRegexPattern =>
                     Measurement?.Neocom?.Button?.FirstOrDefault(candidate => candidate?.TexturePath?.RegexMatchSuccess(texturePathRegexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase) ?? false));
     var KaboonusButton = KaboonusWithTexturePathMatch("wallet");
-
+    if (KaboonusButton == null)
+        return;
+        Sanderling.MouseMove(KaboonusButton);
     for (int i = 3; i >= 0; i--)
         {
             KaboonusMidget = 	Measurement?.Tooltip?.FirstOrDefault()?.LabelText?.FirstOrDefault(entry =>entry.Text.RegexMatchSuccessIgnoreCase("\\d",RegexOptions.IgnoreCase))?.Text ;
@@ -1971,28 +1977,6 @@ void KaboonusTalk()
     Double.TryParse(Preparatus,out MagicalPrepare);
     Paracelsus = MagicalPrepare - HocusPocusPreparatus;
     Host.Delay(2111);
-    //Sanderling.MouseMove(Sanderling?.MemoryMeasurementParsed?.Value?.InfoPanelCurrentSystem?.ListSurroundingsButton);
-}
-
-void LootValue()
-{
-    Host.Delay(1111);
-    EnsureWindowInventoryOpenActiveShip();
-    Host.Delay(1111);
-    var ListLabeltext = 	Measurement?.WindowInventory?.FirstOrDefault()?.LabelText?.ToList();
-    var LootValeur= 	Measurement?.WindowInventory?.FirstOrDefault()?.LabelText?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase("ISK <color=gray>Est. price") ?? true);
-    Sanderling.MouseMove(LootValeur);
-    Host.Delay(311);
-    int positionindex = ListLabeltext.IndexOf(LootValeur, 0);
-    string KaboonusCounting = 	ListLabeltext[positionindex]?.Text;
-    KaboonusCounting = Regex.Replace(KaboonusCounting, "[^0-9]+", "");
-    Double.TryParse(KaboonusCounting,out inventoryValue);
-    int TotalValueParSession = Atstart +(int) inventoryValue;
-Atstart =TotalValueParSession;
-    StatusLootValue =TotalValueParSession.ToString("N0");
-    StatusLoot = Regex.Replace(StatusLootValue, ",", " ");
-    Host.Log("                # inventory value : "+StatusLootValue+ " . ");
-
 }
 
 
@@ -2088,7 +2072,7 @@ void Refill ()
         WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
         ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(HangarContainerLabelRegexPattern) ?? false);
     Host.Delay(1111);
-        Host.Log("               DronesHoldFillPercent   " +DronesHoldFillPercent+ "");
+        Host.Log("               Drones Hold FillPercent   " +DronesHoldFillPercent+ "");
     if (DronesHoldFillPercent < 90)
     {
         Sanderling.MouseClickLeft(HangarContainer);
@@ -2105,6 +2089,9 @@ void Refill ()
         RefillGoods(MissilesName , InventoryActiveShipContainer);
     }
     Host.Delay(511);
+    Sanderling.MouseClickLeft(HangarContainer);
+        RefillGoods(MTUName , InventoryActiveShipContainer);
+        Host.Delay(511);
     Sanderling.MouseClickLeft(HangarContainer);
 }
 
@@ -2137,10 +2124,11 @@ void  ChangeToRatting ()
     {
         ClickMenuEntryOnMenuRoot(RattingShip, "Make Active");
             Host.Delay(3111);
-            NoMoreRats = false;
+            
         Sanderling.MouseClickLeft(Measurement?.Neocom?.InventoryButton);
             Host.Delay(3111);
-        //refill mtu?
+         SiteFinished = false;
+             
     }
 }
 
@@ -2153,7 +2141,7 @@ void  ChangeToSalvage ()
     {
         ClickMenuEntryOnMenuRoot(SalvageShip, "Make Active");
         Host.Delay(3111);
-        NoMoreRats = false;
+        MeChangeSalvage = false;
         EnsureWindowInventoryOpenActiveShip();
         Sanderling.WaitForMeasurement();
         MemoryUpdate();
@@ -2205,8 +2193,3 @@ bool IsNeutralOrEnemy(IChatParticipantEntry participantEntry) =>
      .Any(goodStandingText =>
         flagIcon?.HintText?.RegexMatchSuccessIgnoreCase(goodStandingText) ?? false)) ?? false);
 
-bool MatePlayer (IChatParticipantEntry participantEntry) =>
-   !(participantEntry?.FlagIcon?.Any(flagIcon =>
-     new[] { "Pilot is in your (fleet|corporation)", }
-     .Any(goodStandingText =>
-        flagIcon?.HintText?.RegexMatchSuccessIgnoreCase(goodStandingText) ?? false)) ?? false);
