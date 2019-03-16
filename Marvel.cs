@@ -184,7 +184,7 @@ Host.Log(
         " ;   Local Count / Visibles : " +localCount+  " / " + MaxInLocal+ " ; "+
         " ☾⊙☽   Shield: " + ShieldHpPercent + "% ; Armor: " + ArmorHpPercent + "%" +
         "\n" +
-        "                              $$$  At begining :  " +YesterdayIsk.ToString("N0" , new System.Globalization.CultureInfo("fr-FR"))+  "  $$$ Current wallet :  " +MagicalPrepare.ToString("N0" , new System.Globalization.CultureInfo("fr-FR"))+  "   $$$ Loot:  " + StatusLoot+ 
+        "                              $$$  At begining :  " +YesterdayIsk.ToString("N0" , new System.Globalization.CultureInfo("fr-FR"))+  "  $$$ Current wallet :  " +MagicalPrepare.ToString("N0" , new System.Globalization.CultureInfo("fr-FR"))+  
         "\n" +
         "                              ⊙  ISK in this session :  " + Paracelsus.ToString("N0" , new System.Globalization.CultureInfo("fr-FR"))+
         " ;  ⊙ MAx Time for hostiles   : " + MaxTimeAllowed+ "  min."+
@@ -270,6 +270,7 @@ if(null != RetreatReason && !(Measurement?.IsDocked ?? false))
 
         if (null !=RetreatReasonDread)
         {
+        var probeScannerWindow = Measurement?.WindowProbeScanner?.FirstOrDefault();
             var scanActuallyAnomaly = probeScannerWindow?.ScanResultView?.Entry?.FirstOrDefault(ActuallyAnomaly);
             Host.Log("               Runing from dread");
             deleteBookmark();
@@ -817,7 +818,7 @@ Func<object> DefenseStep()
             Host.Delay(4311);// lastly a new wave appear so we check in 4sec
         Sanderling.WaitForMeasurement();
         if (DefenseEnter)
-            return DefenseStep
+            return DefenseStep;
         ModuleStopToggle(ModuleAfterburner);
         while (DronesInSpaceCount>0 )
                 DroneEnsureInBay();
