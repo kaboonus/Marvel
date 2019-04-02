@@ -28,7 +28,7 @@ string CharName = MyOwnChar?.NameLabel?.Text.ToLower();
 
 string MTUName;
 Dictionary<string,string> NamingMtu=new Dictionary<string,string>();
-NamingMtu.Add("mychar1", "1mtu");
+NamingMtu.Add("mychar1", "1mtu");//your name have to be in miniscule : not "MyChar" but "mychar"
 NamingMtu.Add("mychar2", "2mtu");
 NamingMtu.TryGetValue(CharName,out MTUName);
 string WarpToAnomalyDistance = "Within 30 km";
@@ -2073,20 +2073,23 @@ void Refill ()
         WindowInventory?.LeftTreeListEntry?.SelectMany(entry => new[] { entry }.Concat(entry.EnumerateChildNodeTransitive()))
         ?.FirstOrDefault(entry => entry?.Text?.RegexMatchSuccessIgnoreCase(HangarContainerLabelRegexPattern) ?? false);
     Host.Delay(1111);
-        Host.Log("               Drones Hold FillPercent   " +DronesHoldFillPercent+ "");
+        Host.Log("               Drones %   " +DronesHoldFillPercent+ "");
     if (DronesHoldFillPercent < 90)
     {
         Sanderling.MouseClickLeft(HangarContainer);
             Host.Delay(3111);
         NoQuantity = true;
+
         RefillGoods(LabelNameAttackDrones , InventoryActiveShipDronesContainer);
     }
+     Sanderling.MouseClickLeft(HangarContainer);
     Host.Delay(1111);
     if (UseMissiles)
     {
         Sanderling.MouseClickLeft(HangarContainer);
             Host.Delay(3111);
         NoQuantity = false;
+        reasonDrones = false;
         RefillGoods(MissilesName , InventoryActiveShipContainer);
     }
     Host.Delay(511);
@@ -2102,6 +2105,8 @@ void RefillGoods(string goody , IUIElement deposit)
     Sanderling.TextEntry(goody);
         Host.Delay(1111);
     var RefillListItem = WindowInventory?.SelectedRightInventory?.ListView?.Entry?.ToArray();
+    if (!RefillListItem?.IsNullOrEmpty() ?? false)
+    Host.Log("              Filling with : " +goody);
     var RefillItem = RefillListItem?.FirstOrDefault();
     Sanderling.KeyDown(VirtualKeyCode.SHIFT);
         Host.Delay(511);
@@ -2114,7 +2119,9 @@ void RefillGoods(string goody , IUIElement deposit)
     Host.Delay(511);
     Sanderling.KeyboardPress(returnkey);
     NoQuantity = true;
-    Host.Log("              Filled with : " +goody);
+    Sanderling.MouseClickLeft(WindowInventory?.SelectedRightFilterButtonClear);
+    Host.Delay(811);
+    Sanderling.MouseClickLeft(WindowInventory?.ActiveShipEntry);
 }
 void  ChangeToRatting ()
 {
