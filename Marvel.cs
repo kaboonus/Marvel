@@ -230,8 +230,8 @@ while (SpeedWarping)
         var scanActuallyAnomaly = probeScannerWindow?.ScanResultView?.Entry?.FirstOrDefault(ActuallyAnomaly);
         if ((null != scanActuallyAnomaly) && 0 < listOverviewEntryFriends?.Length && ListCelestialObjects?.Length > 0)
             ClickMenuEntryOnMenuRoot(scanActuallyAnomaly, "Ignore Result");
-        if (OldSiteExist && 0 < listOverviewEntryFriends?.Length && ListCelestialObjects?.Length > 0)
-        deleteBookmark();
+        if (OldSiteExist && !Tethering && ( 0 < listOverviewEntryFriends?.Length || ListRatOverviewEntry?.Length > MaxRatsOnGrid || ListCelestialToAvoid?.Length > 0))
+        { Host.Log("               deleting my bookmark"); deleteBookmark();}
     }
 
 }
