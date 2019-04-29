@@ -39,6 +39,7 @@ string MissilesName = "Inferno Light Missile";
 string QuantityMissiles = "2000";
 int MinInLauncher = 19;
 ////usual to change
+var MaxRatsOnGrid = 8;
 /////settings anomaly 
 string AnomalyToTakeColumnHeader = "name";
 string AnomalyToTake = "Forsaken Hub";
