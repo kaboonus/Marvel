@@ -53,8 +53,7 @@ string messageText = "old site";
 
 string LabelNameAttackDrones;
 Dictionary<string,string> faction=new Dictionary<string,string>();
-faction.Add("Delve", "Imperial Navy Praetor");
-faction.Add("Fountain", "Caldari navy vespa");
+faction["Delve"] = "Imperial Navy Praetor"; //only one drone name / region
 faction.TryGetValue(CurrentRegion,out LabelNameAttackDrones);
  Host.Log( " Drones name : " +LabelNameAttackDrones+ "");
 
