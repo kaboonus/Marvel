@@ -1343,7 +1343,8 @@ int? RangeMissiles => DistanceMinFromLabelWithRegexPattern(@"Max flight range<br
 int?		WeaponMaxRange => Math.Max(RangeMissiles.Value, WeaponRange.Value);
 int MySpeed => Measurement?.ShipUi?.SpeedMilli.HasValue ?? false  ?(int)Sanderling?.MemoryMeasurementParsed?.Value?.ShipUi?.SpeedMilli.Value /1000 : 0;
 
-int? DronesInSpaceCount => DronesInSpaceListEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt();
+//int? DronesInSpaceCount => DronesInSpaceListEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt();
+int? DronesInSpaceCount => (null != WindowDrones)? DronesInSpaceListEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt() :0;
 int? DronesInBayCount => DronesInBayListEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt();
 int? DronesInBaySalvageFolderCount =>DronesInBayListFolderSalvageEntry != null ? ((int?) (DronesInBayListFolderSalvageEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt())): 0;
 int? DronesInBayCombatFolderCount =>DronesInBayListFolderEntry != null ? ((int?) (DronesInBayListFolderEntry?.Caption?.Text?.AsDroneLabel()?.Status?.TryParseInt())): 0;
