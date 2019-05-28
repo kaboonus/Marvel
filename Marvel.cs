@@ -424,8 +424,9 @@ if (Measurement?.IsDocked ?? false)
             Host.Delay( DelayTime*1000);
             while (Measurement?.IsDocked ?? false || (!Tethering  && MySpeed>100))
                 {
-                    if (Measurement?.WindowStation?.FirstOrDefault()?.UndockButton != null)
-                        Sanderling.MouseClickLeft(Measurement?.WindowStation?.FirstOrDefault()?.UndockButton);
+		if (Measurement?.WindowStation?.FirstOrDefault()?.ButtonText?.FirstOrDefault(undock =>undock?.Text?.RegexMatchSuccessIgnoreCase("undock")??false  ) != null)
+                        Sanderling.MouseClickLeft(Measurement?.WindowStation?.FirstOrDefault()?.ButtonText?.FirstOrDefault(undock =>undock?.Text?.RegexMatchSuccessIgnoreCase("Repair Station")??false  ));
+                    
                     Host.Log("             Feel the Force Luke!");
                     Host.Delay(1823);
                 }
